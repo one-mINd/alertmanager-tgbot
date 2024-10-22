@@ -1,0 +1,20 @@
+---
+version: "3.8"
+
+services:
+  alertmanager_tgbot:
+    container_name: alertmanager-tgbot
+    image: alertmanager-tgbot:$IMAGE_TAG
+    build: .
+    restart: always
+    environment:
+      - API_ID=${API_ID}
+      - API_HASH=${API_HASH}
+      - PHONE_NUMBER=${PHONE_NUMBER}
+      - USER_PASSWORD=${USER_PASSWORD}
+      - CLIENT_NAME=${CLIENT_NAME}
+      - ALERTMANAGER_ADDRESS=${ALERTMANAGER_ADDRESS}
+    volumes:
+      - "${CONF_DIR}:/app/conf"
+    ports:
+      - "${LISTENING_ADDR}:${LISTENING_PORT}:8000"

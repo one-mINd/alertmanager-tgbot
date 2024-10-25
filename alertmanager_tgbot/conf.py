@@ -22,27 +22,27 @@ for chat in CHATS:
         DEFAULT_CHATS.append(chat_id)
 
 # Services communication
-ALERTMANAGER_ADDRESS = getenv("ALERTMANAGER_ADDRESS")
+ALERTMANAGER_ADDRESS = getenv("ALERTMANAGER_ADDRESS", "")
 if not ALERTMANAGER_ADDRESS.endswith('/'):
     ALERTMANAGER_ADDRESS = ALERTMANAGER_ADDRESS + "/"
 
 # Bot messages templates
 ALERT_TEMPLATE = CONFS.get("alert_template",
 """
-Alert Created 😱
-Host: {{ labels.dns_hostname }}
-Alert Name: {{ labels.alertname }}
-Status: {{ labels.severity }} ❗️
-Summary: {{ annotations.summary }}
-Started: {{ startsAt | format_date('%b %d %Y %H:%M:%S') }}
+**Alert Created** 😱
+**Host**: {{ labels.dns_hostname }}
+**Alert Name**: {{ labels.alertname }}
+**Status**: {{ labels.severity }} ❗️
+**Summary**: {{ annotations.summary }}
+**Started**: {{ startsAt | format_date('%b %d %Y %H:%M:%S') }}
 """)
 
 RESOLVE_TEMPLATE = CONFS.get("alert_template",
 """
-Alert Resolved 😍
-Host: {{ labels.dns_hostname }}
-Alert Name: {{ labels.alertname }}
-Status: OK 👍
-Summary: {{ annotations.summary }}
-Ended: {{ startsAt | format_date('%b %d %Y %H:%M:%S') }}
+**Alert Resolved** 😍
+**Host**: {{ labels.dns_hostname }}
+**Alert Name**: {{ labels.alertname }}
+**Status**: OK 👍
+**Summary**: {{ annotations.summary }}
+**Ended**: {{ startsAt | format_date('%b %d %Y %H:%M:%S') }}
 """)

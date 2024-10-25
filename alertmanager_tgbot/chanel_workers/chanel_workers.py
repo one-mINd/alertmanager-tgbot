@@ -260,7 +260,7 @@ class ChanelWorker(ChanelWorkerInterface):
             )
             updated_message = format_alert_allow_undefined(alert)
 
-            if original_message.message != updated_message:
+            if original_message.text != updated_message:
                 message = await self.client.edit_message(
                     entity=entity,
                     message=message_id,

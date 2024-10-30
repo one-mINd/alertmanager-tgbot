@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 
-from data_models import BaseAlert, BaseAlerts, ActiveAlerts
+from data_models import BaseAlert, BaseAlerts, ActiveAlerts, EnrichedActiveAlerts
 
 
 class ChanelWorkerInterface():
@@ -99,7 +99,7 @@ class ChanelWorkerInterface():
 
 
     @abstractmethod
-    async def sync_alerts(self, active_alerts: ActiveAlerts) -> None:
+    async def sync_alerts(self, active_alerts: EnrichedActiveAlerts) -> None:
         """
         Sync alerts in group with realy active alerts in alertmanager
         args:

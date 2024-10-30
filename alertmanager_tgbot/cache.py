@@ -15,7 +15,8 @@ class Cache():
         {
             key: {
                 "message_id": int,
-                "entity": int
+                "entity": int,
+                "alert": BaseAlert
             }
             ...
         }
@@ -110,7 +111,8 @@ class Cache():
         if key not in self.alerts:
             self.alerts[key] = {
                 "message_id": message_id,
-                "entity": entity
+                "entity": entity,
+                "alert": alert
             }
             tgbot_logger.debug(dedent("""\
                 Alert was cahed with key - %s

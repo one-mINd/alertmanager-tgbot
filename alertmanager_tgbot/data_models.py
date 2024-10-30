@@ -1,5 +1,6 @@
 """Module with pydantic validation models for FastAPI endpoints"""
 
+from datetime import datetime, timedelta
 from typing import Literal, List, Optional, Dict, Any
 from pydantic import BaseModel
 
@@ -55,3 +56,48 @@ class ActiveAlert(BaseAlert):
 class ActiveAlerts(BaseModel):
     """List of active alerts received from alertmanager api"""
     alerts: List[ActiveAlert]
+
+
+class MuteMatcher(BaseModel):
+    """Model for matchers in requests body for creating silences in alertmanager"""
+    name: str
+    value: str
+    isRegex: Optional[bool] = True
+    isEqual: Optional[bool] = True
+
+
+class Mute(BaseModel):
+    """Model for requests body for creating silences in alertmanager"""
+    matchers: List[MuteMatcher]
+    createdBy: Optional[str] = ''
+    comment: Optional[str] = ''
+
+    # Today date by default
+    startsAt: Optional[str] = datetime.now().isoformat(timespec="seconds")
+
+    # Next day date by default
+    endsAt: Optional[str] = (
+        datetime.now() + timedelta(days=1)
+    ).isoformat(timespec="seconds")
+
+
+class Silence(BaseModel):
+    """Model for alertmanager silences"""
+    id: str
+    status: Dict[str, str] 
+    updatedAt: str
+    startsAt: str
+    endsAt: str
+    comment: str
+    createdBy: str
+    matchers: List[MuteMatcher]
+
+
+class EnrichedActiveAlert(ActiveAlert):
+    """Active alert enriched with information by alertmanager workers"""
+    silences: Optional[List[Silence]] = []
+
+
+class EnrichedActiveAlerts(BaseModel):
+    """List of active alerts enriched with information by alertmanager workers"""
+    alerts: List[EnrichedActiveAlert]

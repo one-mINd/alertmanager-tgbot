@@ -1,17 +1,13 @@
-"""Telegram client-bot base"""
+"""Telegram bot for working with alert chats"""
 
-from asyncio import new_event_loop
 from textwrap import dedent
-import telethon
 from telethon.sync import TelegramClient
-from telethon.errors.rpcerrorlist import MessageNotModifiedError
-import telethon.sync
 
 from conf import CHATS, DEFAULT_CHATS
-from data_models import BaseAlert, BaseAlerts, ActiveAlerts
+from data_models import BaseAlert, BaseAlerts, ActiveAlerts, EnrichedActiveAlerts
 from chanel_workers.logger import tgbot_logger
 from chanel_workers.interfaces import ChanelWorkerInterface
-from chanel_workers.cache import Cache
+from cache import Cache
 from chanel_workers.formatters import format_alert_allow_undefined
 
 
@@ -19,34 +15,17 @@ class ChanelWorker(ChanelWorkerInterface):
     """
     Base class for working with alerts chats
     args:
-        api_id: api id for telegram session
-        api_hash: api hash for telegram session
-        phone_number: phone number of telegram user account
-        user_password: password of telegram user account
-        client_name: name of telegram session
+        client: Telegram client that will work with chats
+        cache: Object of Cache class, where cache will stored
     """
     def __init__(
             self,
-            api_id: int,
-            api_hash: str,
-            phone_number: str,
-            user_password: str,
-            client_name="tgbot"
+            client: TelegramClient,
+            cache: Cache
         ) -> None:
 
-        self.loop = new_event_loop()
-        self.client = TelegramClient(
-            "conf/"+client_name, 
-            api_id=api_id,
-            api_hash=api_hash,
-            system_version="4.16.30-vxCUSTOM",
-            loop=self.loop
-        ).start(
-            phone=phone_number,
-            password=user_password
-        )
-
-        self.cache = Cache()
+        self.client = client
+        self.cache = cache
 
 
     def _split_alerts_by_chats(self, alerts: BaseAlerts) -> dict:
@@ -100,9 +79,6 @@ class ChanelWorker(ChanelWorkerInterface):
                 for chat_id in DEFAULT_CHATS
             })
 
-            # Drop alerts targeted to blackhole
-            result.pop("blackhole", None)
-
             result = {int(key): value for key, value in result.items()}
 
             return result
@@ -117,16 +93,6 @@ class ChanelWorker(ChanelWorkerInterface):
             tgbot_logger.error(dedent("""\
                 Wrong type of chat id. It must be int or one of predefined string."""))
             raise WrongChatID() from err
-
-
-    def get_client(self) -> TelegramClient:
-        """Get telegram client object"""
-        return self.client
-
-
-    def get_event_loop(self):
-        """Get telegram client event loop"""
-        return self.client.loop
 
 
     async def send_alert_to_chat(self, entity: str, alert: BaseAlert) -> None:
@@ -311,7 +277,8 @@ class ChanelWorker(ChanelWorkerInterface):
         """
         ids = []
         async for message in self.client.iter_messages(entity):
-            ids.append(message.id)
+            if message.id != 1:
+                ids.append(message.id)
         return ids
 
 
@@ -347,7 +314,7 @@ class ChanelWorker(ChanelWorkerInterface):
                             """))
 
 
-    async def sync_alerts(self, active_alerts: ActiveAlerts) -> None:
+    async def sync_alerts(self, active_alerts: EnrichedActiveAlerts) -> None:
         """
         Sync alerts in chat with realy active alerts in alertmanager
         args:
@@ -391,7 +358,7 @@ class ChanelWorker(ChanelWorkerInterface):
         alerts_to_update = [cache_keys_active_alerts[al] for al in alerts_to_update]
         await self.update_alerts(ActiveAlerts(alerts=alerts_to_update))
         tgbot_logger.info(dedent(f"""\
-                            Alerts to update - {len(alerts_to_update)}
+                            Existing alerts - {len(alerts_to_update)}
                             """))
 
         await self.sync_cache_with_chanel()

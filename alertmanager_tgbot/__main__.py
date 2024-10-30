@@ -2,7 +2,7 @@
 
 import conf
 from api.api import get_server, set_bot
-from chanel_workers import ChanelWorker
+from tgbot import TGBot
 from alertmanager_workers import AlertmanagerWorker
 from project_logging import root_logger
 
@@ -14,7 +14,7 @@ async def run(bot):
 
 if __name__ == "__main__":
     root_logger.info("Starting alertmanager-tgbot")
-    bot = ChanelWorker(
+    bot = TGBot(
         api_id=conf.API_ID,
         api_hash=conf.API_HASH,
         phone_number=conf.PHONE_NUMBER,

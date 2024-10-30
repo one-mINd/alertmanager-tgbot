@@ -29,6 +29,9 @@ if not ALERTMANAGER_ADDRESS.endswith('/'):
 # Bot messages templates
 ALERT_TEMPLATE = CONFS.get("alert_template",
 """
+{%- if silences|length > 0 -%}
+[**MUTED** until {{ silences[0].endsAt | format_date('%b %d %Y %H:%M:%S') }}] 
+{% endif -%}
 **Alert Created** 😱
 **Host**: {{ labels.dns_hostname }}
 **Alert Name**: {{ labels.alertname }}
@@ -40,6 +43,7 @@ ALERT_TEMPLATE = CONFS.get("alert_template",
 RESOLVE_TEMPLATE = CONFS.get("alert_template",
 """
 **Alert Resolved** 😍
+**Environment**: {{ labels.env }}
 **Host**: {{ labels.dns_hostname }}
 **Alert Name**: {{ labels.alertname }}
 **Status**: OK 👍

@@ -118,6 +118,8 @@ class ChatBot():
         Handle mute alerts command
         """
         try:
+            await sleep(2)
+
             sender = await event.get_sender()
             command = event.message.message
             chatbot_logger.info(
@@ -132,7 +134,6 @@ class ChatBot():
                 or len(self.forwards_stack[event.chat_id]) == 0:
                 raise AlertsNotSpecified()
 
-            await sleep(2)
             silences_ids = []
             alerts = self.forwards_stack.pop(event.chat_id)
             for alert in alerts:
@@ -174,6 +175,8 @@ class ChatBot():
         Handle unmute alerts command
         """
         try:
+            await sleep(2)
+
             sender = await event.get_sender()
             command = event.message.message
             chatbot_logger.info(
@@ -188,7 +191,6 @@ class ChatBot():
                 or len(self.forwards_stack[event.chat_id]) == 0:
                 raise AlertsNotSpecified()
 
-            await sleep(2)
             silences_ids = []
             alerts = self.forwards_stack.pop(event.chat_id)
             for alert in alerts:

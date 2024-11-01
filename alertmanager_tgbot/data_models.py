@@ -84,7 +84,7 @@ class Mute(BaseModel):
 class Silence(BaseModel):
     """Model for alertmanager silences"""
     id: str
-    status: Dict[str, str] 
+    status: Dict[str, str]
     updatedAt: str
     startsAt: str
     endsAt: str

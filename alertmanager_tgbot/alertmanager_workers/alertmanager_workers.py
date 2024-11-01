@@ -4,8 +4,8 @@ import asyncio
 from textwrap import dedent
 
 from chanel_workers import ChanelWorkerInterface
-from data_models import ActiveAlerts, EnrichedActiveAlerts, EnrichedActiveAlert, Silence
-from request_senders import send_get_request
+from data_models import ActiveAlerts, EnrichedActiveAlerts, EnrichedActiveAlert, Silence, BaseAlert, MuteMatcher, Mute
+from request_senders import send_get_request, send_post_request, send_delete_request
 from alertmanager_workers.logger import alertmanager_workers_logger
 
 
@@ -19,15 +19,100 @@ class AlertmanagerWorker():
     """
     def __init__(
             self,
-            chanel_worker: ChanelWorkerInterface,
             alertmanager_address: str,
+            chanel_worker: ChanelWorkerInterface = None,
             delay: int = 10
         ) -> None:
 
         self.chanel_worker = chanel_worker
         self.alertmanager_address = alertmanager_address
         self.alertmanager_alerts_address = self.alertmanager_address + "api/v2/alerts"
+        self.alertmanager_silences_address = self.alertmanager_address + "api/v2/silences"
+        self.alertmanager_silence_address = self.alertmanager_address + "api/v2/silence"
         self.delay = delay
+
+
+    def set_chanel_worker(self, chanel_worker: ChanelWorkerInterface) -> None:
+        """
+        Set chanel worker 
+        """
+        self.chanel_worker = chanel_worker
+
+
+    async def create_silence(self, mute: Mute) -> str:
+        """
+        Create silence in alertmanager
+        args:
+            silence: silence that will be created
+        """
+        response = await send_post_request(
+            url=self.alertmanager_silences_address,
+            message=mute.dict()
+        )
+
+        return response['silenceID']
+
+
+    async def delete_silence(self, silence_id: str) -> None:
+        """
+        Delete silence by id
+        args:
+            silence: silence that will be created
+        """
+        await send_delete_request(
+            url=self.alertmanager_silence_address+"/"+silence_id
+        )
+
+
+    async def mute_alert(
+            self,
+            alert: BaseAlert,
+            ends_at: str = '',
+            created_by: str = '',
+            comment: str = ''
+        ) -> None:
+        """
+        Create silence by all labels in specified alert
+        args:
+            alert: alert that will be muted
+        """
+        mute_matchers = []
+        for label in alert.labels:
+            mute_matchers.append(
+                MuteMatcher(
+                    name=label,
+                    value=alert.labels[label]
+                )
+            )
+
+        if ends_at != '':
+            mute = Mute(
+                matchers=mute_matchers,
+                endsAt=ends_at,
+                createdBy=created_by,
+                comment=comment,
+            )
+
+        else:
+            mute = Mute(
+                matchers=mute_matchers,
+                createdBy=created_by,
+                comment=comment,
+            )
+
+        silence_id = await self.create_silence(mute)
+        return silence_id
+
+
+    async def unmute_alert(self, alert: EnrichedActiveAlert) -> None:
+        """
+        Unmute specified alert
+        args:
+            silence: silence that will be created
+        """
+        silence_id = alert.silences[0].id
+        await self.delete_silence(silence_id)
+        return silence_id
 
 
     def alerts_filter(self, alerts: ActiveAlerts) -> ActiveAlerts:

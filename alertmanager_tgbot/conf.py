@@ -26,6 +26,9 @@ ALERTMANAGER_ADDRESS = getenv("ALERTMANAGER_ADDRESS", "")
 if not ALERTMANAGER_ADDRESS.endswith('/'):
     ALERTMANAGER_ADDRESS = ALERTMANAGER_ADDRESS + "/"
 
+# Permissions
+ACL = CONFS.get("acl", {})
+
 # Bot messages templates
 ALERT_TEMPLATE = CONFS.get("alert_template",
 """

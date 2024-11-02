@@ -4,7 +4,7 @@ import asyncio
 from textwrap import dedent
 
 from chanel_workers import ChanelWorkerInterface
-from data_models import ActiveAlerts, EnrichedActiveAlerts, EnrichedActiveAlert, Silence, BaseAlert, MuteMatcher, Mute
+from data_models import ActiveAlerts, EnrichedActiveAlerts, EnrichedActiveAlert, Silence, Mute
 from request_senders import send_get_request, send_post_request, send_delete_request
 from alertmanager_workers.logger import alertmanager_workers_logger
 

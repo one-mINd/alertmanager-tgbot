@@ -9,7 +9,8 @@ from data_models import Mute, MuteMatcher, BaseAlert
 
 
 silence_parser = argparse.ArgumentParser(
-    description="Mute command",
+    prog='/silence',
+    description="""Mute command""",
     exit_on_error=False,
     add_help=False
 )
@@ -92,7 +93,10 @@ def parse_silence_command(command: str) -> Mute:
 
 
 mute_parser = argparse.ArgumentParser(
-    description="Mute command",
+    prog='/mute',
+    description=dedent("""
+    Forward one or more alerts from an active chat here and add this command.
+    """),
     exit_on_error=False,
     add_help=False
 )
@@ -157,6 +161,40 @@ def parse_mute_command(command: str, alert: BaseAlert) -> Mute:
     )
 
     return result
+
+
+unmute_parser = argparse.ArgumentParser(
+    prog='/unmute',
+    description=dedent("""
+    Forward one or more muted alerts from an active chat here and add this command.
+    """),
+    exit_on_error=False,
+    add_help=False
+)
+
+
+def get_help() -> str:
+    """
+    Get help for all parsers
+    """
+    help_message = ""
+
+    silence_help = silence_parser.format_help()
+    silence_help = silence_help.replace("\n\n", "\n")
+    silence_help = silence_help.replace("/silence", "**/silence**")
+    help_message += silence_help + "\n\n"
+
+    mute_help = mute_parser.format_help()
+    mute_help = mute_help.replace("\n\n", "\n")
+    mute_help = mute_help.replace("/mute", "**/mute**")
+    help_message += mute_help + "\n\n"
+
+    unmute_help = unmute_parser.format_help()
+    unmute_help = unmute_help.replace("\n\n", "\n")
+    unmute_help = unmute_help.replace("/unmute", "**/unmute**")
+    help_message += unmute_help + "\n\n"
+
+    return help_message
 
 
 # Module Exceptions

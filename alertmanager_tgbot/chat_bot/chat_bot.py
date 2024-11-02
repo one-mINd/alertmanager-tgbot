@@ -7,7 +7,7 @@ from telethon.sync import TelegramClient, events
 from .logger import chatbot_logger
 from .acl import is_operation_permitted
 from cache import Cache
-from chat_bot.parsers import parse_silence_command, parse_mute_command
+from chat_bot.parsers import parse_silence_command, parse_mute_command, get_help
 from alertmanager_workers import AlertmanagerWorker, AlertHasntSilence
 
 
@@ -34,6 +34,13 @@ class ChatBot():
             self.ping,
             event=events.NewMessage(
                 pattern='/ping'
+            )
+        )
+
+        self.client.add_event_handler(
+            self.help,
+            event=events.NewMessage(
+                pattern='/help'
             )
         )
 
@@ -76,6 +83,25 @@ class ChatBot():
             entity=msg.chat_id,
             reply_to=msg.id,
             message="pong"
+        )
+
+
+    async def help(self, event: events.NewMessage):
+        """
+        Send help message
+        """
+        msg = event.message
+        help_message = get_help()
+        help_header = dedent("""
+        All commands start with the **"/"** symbol. 
+        Please note that some commands require forwarding alert messages from chats that the bot works with. 
+        Attention, forwarding messages from chats that the bot does not work with or forwarding from the current chat here will not work!
+        """)
+        help_message = help_header + "\n\n" + help_message
+
+        await self.client.send_message(
+            entity=msg.chat_id,
+            message=help_message
         )
 
 
@@ -221,7 +247,7 @@ class ChatBot():
             await self.client.send_message(
                 entity=event.message.chat_id,
                 reply_to=alert_forward.message.id,
-                message="Alert not muted"
+                message="The alert silence is not removed because the alert is not muted yet."
             )
 
         except Exception as err:

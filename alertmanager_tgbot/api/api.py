@@ -40,7 +40,7 @@ async def alert(alerts: Alerts, background_tasks: BackgroundTasks):
         alerts: Incoming alerts
         background_tasks: FastAPI defined arg
     """
-    background_tasks.add_task(process_alerts, alerts=alerts)
+    # background_tasks.add_task(process_alerts, alerts=alerts)
 
     return Response(content="Alerts accepted")
 

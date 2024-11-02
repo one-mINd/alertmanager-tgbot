@@ -122,7 +122,7 @@ class ChatBot():
                 raise PermissionDenied(sender.username)
 
             mute = parse_silence_command(command)
-            silence_id = self.alertmanager_worker.create_silence(mute)
+            silence_id = await self.alertmanager_worker.create_silence(mute)
             chatbot_logger.info("Silence created, response is - %s", silence_id)
 
             await self.client.send_message(

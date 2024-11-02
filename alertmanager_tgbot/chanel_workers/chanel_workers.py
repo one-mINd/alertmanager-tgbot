@@ -74,10 +74,15 @@ class ChanelWorker(ChanelWorkerInterface):
             ]
 
             # If the alert was not defined for a chat, it will be sent to all default chats
-            result.update({
+            alerts_without_chats = {
                 chat_id: alerts_without_chats
                 for chat_id in DEFAULT_CHATS
-            })
+            }
+
+            for chat in alerts_without_chats:
+                if not chat in result:
+                    result[chat] = []
+                result[chat] += alerts_without_chats[chat]
 
             result = {int(key): value for key, value in result.items()}
 

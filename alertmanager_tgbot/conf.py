@@ -20,6 +20,7 @@ for chat in CHATS:
     if chat.get("default", False):
         chat_id = int(chat["id"])
         DEFAULT_CHATS.append(chat_id)
+CHATS_IDS = [id.get("id") for id in CHATS]
 
 # Services communication
 ALERTMANAGER_ADDRESS = getenv("ALERTMANAGER_ADDRESS", "")

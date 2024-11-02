@@ -153,12 +153,19 @@ def parse_mute_command(command: str, alert: BaseAlert) -> Mute:
             )
         )
 
-    result = Mute(
-        matchers=mute_matchers,
-        createdBy='',
-        comment=args["comment"],
-        endsAt=args["ends_at"]
-    )
+    if args["ends_at"] != "":
+        result = Mute(
+            matchers=mute_matchers,
+            createdBy='',
+            comment=args["comment"],
+            endsAt=args["ends_at"]
+        )
+    else:
+        result = Mute(
+            matchers=mute_matchers,
+            createdBy='',
+            comment=args["comment"],
+        )
 
     return result
 

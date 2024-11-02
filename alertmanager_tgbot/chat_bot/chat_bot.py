@@ -6,6 +6,7 @@ from telethon.sync import TelegramClient, events
 
 from .logger import chatbot_logger
 from .acl import is_operation_permitted
+from conf import CHATS_IDS
 from cache import Cache
 from chat_bot.parsers import parse_silence_command, parse_mute_command, get_help
 from alertmanager_workers import AlertmanagerWorker, AlertHasntSilence
@@ -163,6 +164,9 @@ class ChatBot():
             silences_ids = []
             alerts = self.forwards_stack.pop(event.chat_id)
             for alert in alerts:
+                if not alert.message.forward.chat_id in CHATS_IDS:
+                    raise ForwardFromUnknownChat(alert.message.forward.chat_id)
+
                 alert_cache_keys = self.cache.get_keys_by_entity_messageids(
                     entity=alert.message.forward.chat_id,
                     messsages_ids=[alert.message.forward.channel_post]
@@ -184,6 +188,20 @@ class ChatBot():
                 entity=event.message.chat_id,
                 reply_to=event.message.id,
                 message=f"Silences created with ids - {silences_ids}"
+            )
+
+        except ForwardFromUnknownChat:
+            chatbot_logger.error(
+                "Chat unknown with id %s",
+                alert.message.forward.chat_id
+            )
+            await self.client.send_message(
+                entity=event.message.chat_id,
+                reply_to=event.message.id,
+                message=dedent("""
+                    Forward from unknown chat
+                    You should only send alerts from chats that the bot works with
+                """)
             )
 
         except Exception as err:
@@ -303,5 +321,18 @@ class AlertsNotSpecified(Exception):
         super().__init__(
             dedent("""
                 You must forward alerts to this chat to use /mute command
+            """)
+        )
+
+
+class ForwardFromUnknownChat(Exception):
+    """
+    Exception for cases when a user attempts to work with messages from unknown chat
+    """
+    def __init__(self, chat_id):
+        self.chat_id = chat_id
+        super().__init__(
+            dedent(f"""
+                Chat unknown with id {self.chat_id}
             """)
         )

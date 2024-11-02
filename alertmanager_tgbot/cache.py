@@ -68,6 +68,16 @@ class Cache():
         return self.alerts
 
 
+    def get_alerts_by_entity(self, entity: int) -> list:
+        """get alerts thats currently in active chat"""
+        result = []
+        for alert in self.alerts.values():
+            if alert.get("entity") == entity:
+                result.append(alert)
+
+        return result
+
+
     def get_cache_by_key(self, key: str) -> dict:
         """get alert cache by its cache key"""
         if key in self.alerts:

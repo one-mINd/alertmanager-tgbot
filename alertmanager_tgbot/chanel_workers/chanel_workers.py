@@ -292,13 +292,13 @@ class ChanelWorker(ChanelWorkerInterface):
         Sync cache with real messages in chanel
         """
         tgbot_logger.info("Start to sync cache with chanels")
-        cached_ids = [cache.get("message_id") for cache in self.cache.get_alerts().values()]
-        cached_ids = set(cached_ids)
         for chat in CHATS:
             chat_id = chat["id"]
-            if chat_id == "blackhole":
-                continue
             chat_id = int(chat_id)
+
+            cached_alerts = self.cache.get_alerts_by_entity(chat_id)
+            cached_ids = [cache.get("message_id") for cache in cached_alerts]
+            cached_ids = set(cached_ids)
 
             messages_ids = await self.get_messages_ids_in_channel(chat_id)
             messages_ids = set(messages_ids)

@@ -68,7 +68,7 @@ class MuteMatcher(BaseModel):
 
 class Mute(BaseModel):
     """Model for requests body for creating silences in alertmanager"""
-    matchers: List[MuteMatcher]
+    matchers: Optional[List[MuteMatcher]]
     createdBy: Optional[str] = ''
     comment: Optional[str] = ''
 

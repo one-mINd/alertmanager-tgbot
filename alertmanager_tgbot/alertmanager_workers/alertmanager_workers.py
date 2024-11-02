@@ -64,52 +64,15 @@ class AlertmanagerWorker():
         )
 
 
-    async def mute_alert(
-            self,
-            alert: BaseAlert,
-            ends_at: str = '',
-            created_by: str = '',
-            comment: str = ''
-        ) -> None:
-        """
-        Create silence by all labels in specified alert
-        args:
-            alert: alert that will be muted
-        """
-        mute_matchers = []
-        for label in alert.labels:
-            mute_matchers.append(
-                MuteMatcher(
-                    name=label,
-                    value=alert.labels[label]
-                )
-            )
-
-        if ends_at != '':
-            mute = Mute(
-                matchers=mute_matchers,
-                endsAt=ends_at,
-                createdBy=created_by,
-                comment=comment,
-            )
-
-        else:
-            mute = Mute(
-                matchers=mute_matchers,
-                createdBy=created_by,
-                comment=comment,
-            )
-
-        silence_id = await self.create_silence(mute)
-        return silence_id
-
-
     async def unmute_alert(self, alert: EnrichedActiveAlert) -> None:
         """
         Unmute specified alert
         args:
             silence: silence that will be created
         """
+        if len(alert.silences) == 0:
+            raise AlertHasntSilence()
+
         silence_id = alert.silences[0].id
         await self.delete_silence(silence_id)
         return silence_id
@@ -183,3 +146,20 @@ class AlertmanagerWorker():
             alerts = await self.enrich_alerts_silences(alerts)
             await self.chanel_worker.sync_alerts(alerts)
             await asyncio.sleep(self.delay)
+
+
+# Module Exceptions
+
+
+class AlertHasntSilence(Exception):
+    """
+    Exception for cases when alert has not any related silence
+    args:
+        alert: Alert without any mutes
+    """
+    def __init__(self):
+        super().__init__(
+            dedent("""
+                Alert does not have any silences
+            """)
+        )

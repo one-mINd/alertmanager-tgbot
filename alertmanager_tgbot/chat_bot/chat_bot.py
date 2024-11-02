@@ -7,8 +7,8 @@ from telethon.sync import TelegramClient, events
 from .logger import chatbot_logger
 from .acl import is_operation_permitted
 from cache import Cache
-from chat_bot.parsers import parse_mute_command
-from alertmanager_workers import AlertmanagerWorker
+from chat_bot.parsers import parse_silence_command, parse_mute_command
+from alertmanager_workers import AlertmanagerWorker, AlertHasntSilence
 
 
 class ChatBot():
@@ -94,7 +94,7 @@ class ChatBot():
             if not is_operation_permitted(sender.username, "mute"):
                 raise PermissionDenied(sender.username)
 
-            mute = parse_mute_command(command)
+            mute = parse_silence_command(command)
             silence_id = self.alertmanager_worker.create_silence(mute)
             chatbot_logger.info("Silence created, response is - %s", silence_id)
 
@@ -144,15 +144,14 @@ class ChatBot():
                 alert_cache_key = alert_cache_keys[0]
                 alert = self.cache.get_cache_by_key(alert_cache_key)
                 alert = alert.get('alert')
-                silences_id = await self.alertmanager_worker.mute_alert(
-                    alert,
-                    created_by=sender.username
-                )
-                silences_ids.append(silences_id)
+                mute = parse_mute_command(command, alert)
+                mute.createdBy = sender.username
+                silence_id = await self.alertmanager_worker.create_silence(mute)
+                silences_ids.append(silence_id)
 
                 chatbot_logger.info(
                     "Alert muted with silence id - %s",
-                    silences_id
+                    silence_id
                 )
 
             await self.client.send_message(
@@ -193,10 +192,10 @@ class ChatBot():
 
             silences_ids = []
             alerts = self.forwards_stack.pop(event.chat_id)
-            for alert in alerts:
+            for alert_forward in alerts:
                 alert_cache_keys = self.cache.get_keys_by_entity_messageids(
-                    entity=alert.message.forward.chat_id,
-                    messsages_ids=[alert.message.forward.channel_post]
+                    entity=alert_forward.message.forward.chat_id,
+                    messsages_ids=[alert_forward.message.forward.channel_post]
                 )
                 alert_cache_key = alert_cache_keys[0]
                 alert = self.cache.get_cache_by_key(alert_cache_key)
@@ -215,6 +214,14 @@ class ChatBot():
                 entity=event.message.chat_id,
                 reply_to=event.message.id,
                 message=f"Silences deleted with ids - {silences_ids}"
+            )
+
+        except AlertHasntSilence:
+            chatbot_logger.error("Alert not muted")
+            await self.client.send_message(
+                entity=event.message.chat_id,
+                reply_to=alert_forward.message.id,
+                message="Alert not muted"
             )
 
         except Exception as err:

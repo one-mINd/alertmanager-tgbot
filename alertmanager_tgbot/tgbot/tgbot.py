@@ -27,19 +27,19 @@ class TGBot(ChanelWorker, ChatBot):
             user_password: str,
             alertmanager_worker: AlertmanagerWorker,
             client_name="tgbot",
+            loop=new_event_loop()
         ) -> None:
 
-        self.loop = new_event_loop()
+        self.loop = loop
         self.cache = Cache()
+        self.phone_number = phone_number
+        self.user_password = user_password
         self.client = TelegramClient(
             "conf/"+client_name, 
             api_id=api_id,
             api_hash=api_hash,
             system_version="4.16.30-vxCUSTOM",
             loop=self.loop
-        ).start(
-            phone=phone_number,
-            password=user_password
         )
 
         ChanelWorker.__init__(
@@ -64,3 +64,11 @@ class TGBot(ChanelWorker, ChatBot):
     def get_event_loop(self):
         """Get telegram client event loop"""
         return self.client.loop
+
+
+    async def start(self):
+        """Start telegram bot session"""
+        await self.client.start(
+            phone=self.phone_number,
+            password=self.user_password
+        )

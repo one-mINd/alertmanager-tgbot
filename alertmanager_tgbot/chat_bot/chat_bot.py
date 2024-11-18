@@ -6,7 +6,7 @@ from telethon.sync import TelegramClient, events
 
 from .logger import chatbot_logger
 from .acl import is_operation_permitted
-from conf import CHATS_IDS
+from conf import conf
 from cache import Cache
 from chat_bot.parsers import parse_silence_command, parse_mute_command, get_help
 from alertmanager_workers import AlertmanagerWorker, AlertHasntSilence
@@ -164,7 +164,7 @@ class ChatBot():
             silences_ids = []
             alerts = self.forwards_stack.pop(event.chat_id)
             for alert in alerts:
-                if not alert.message.forward.chat_id in CHATS_IDS:
+                if not alert.message.forward.chat_id in conf.CHATS_IDS:
                     raise ForwardFromUnknownChat(alert.message.forward.chat_id)
 
                 alert_cache_keys = self.cache.get_keys_by_entity_messageids(

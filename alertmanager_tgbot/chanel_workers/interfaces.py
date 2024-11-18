@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 
-from data_models import BaseAlert, BaseAlerts, ActiveAlerts, EnrichedActiveAlerts
+from data_models import BaseAlert, BaseAlerts, EnrichedActiveAlerts
 
 
 class ChanelWorkerInterface():

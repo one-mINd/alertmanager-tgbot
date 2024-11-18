@@ -3,7 +3,7 @@
 from textwrap import dedent
 from telethon.sync import TelegramClient
 
-from conf import CHATS, DEFAULT_CHATS
+from conf import conf
 from data_models import BaseAlert, BaseAlerts, ActiveAlerts, EnrichedActiveAlerts
 from chanel_workers.logger import tgbot_logger
 from chanel_workers.interfaces import ChanelWorkerInterface
@@ -46,17 +46,17 @@ class ChanelWorker(ChanelWorkerInterface):
         """
         try:
             result = {}
-            for chat in CHATS:
-                chat_id = chat["id"]
+            for chat in conf.CHATS:
+                chat_id = chat.id
                 result[chat_id] = []
 
-                # Skip alerts without labels
-                if "labels" not in chat:
+                # Skip chats without labels
+                if len(chat.labels) == 0:
                     continue
 
                 for alert in alerts.alerts:
                     # Alerts will send if its labels is subset of chats labels
-                    if chat.get("labels").items() <= alert.labels.items():
+                    if chat.labels.items() <= alert.labels.items():
                         result[chat_id].append(alert)
 
             # Get all alerts with defined chats
@@ -76,7 +76,7 @@ class ChanelWorker(ChanelWorkerInterface):
             # If the alert was not defined for a chat, it will be sent to all default chats
             alerts_without_chats = {
                 chat_id: alerts_without_chats
-                for chat_id in DEFAULT_CHATS
+                for chat_id in conf.DEFAULT_CHATS
             }
 
             for chat in alerts_without_chats:
@@ -136,8 +136,8 @@ class ChanelWorker(ChanelWorkerInterface):
         args:
             alert: Alert that will be sent to the entity
         """
-        if len(DEFAULT_CHATS) > 0:
-            for chat_id in DEFAULT_CHATS:
+        if len(conf.DEFAULT_CHATS) > 0:
+            for chat_id in conf.DEFAULT_CHATS:
                 try:
                     await self.send_alert_to_chat(entity=chat_id, alert=alert)
                 except SendAlertFailed:
@@ -148,7 +148,7 @@ class ChanelWorker(ChanelWorkerInterface):
                 failed sending alerts message to default chats
                 Original message- %s"""),
                 alert)
-            raise NoDefaultChats(DEFAULT_CHATS)
+            raise NoDefaultChats(conf.DEFAULT_CHATS)
 
 
     async def send_alerts_to_chats(self, income_alerts: BaseAlerts) -> None:
@@ -292,8 +292,8 @@ class ChanelWorker(ChanelWorkerInterface):
         Sync cache with real messages in chanel
         """
         tgbot_logger.info("Start to sync cache with chanels")
-        for chat in CHATS:
-            chat_id = chat["id"]
+        for chat in conf.CHATS:
+            chat_id = chat.id
             chat_id = int(chat_id)
 
             cached_alerts = self.cache.get_alerts_by_entity(chat_id)

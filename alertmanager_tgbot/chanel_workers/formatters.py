@@ -10,7 +10,7 @@ from jinja2.filters import FILTERS
 from jinja2.exceptions import UndefinedError
 
 from data_models import BaseAlert
-from conf import ALERT_TEMPLATE, RESOLVE_TEMPLATE
+from conf import conf
 from chanel_workers.logger import tgbot_logger
 
 
@@ -35,7 +35,7 @@ def format_alert(alert: BaseAlert) -> str:
         alert: original alert
     """
     try:
-        template = Template(ALERT_TEMPLATE, undefined=StrictUndefined)
+        template = Template(conf.ALERT_TEMPLATE, undefined=StrictUndefined)
         formated = template.render(**alert.dict())
         return formated
 
@@ -45,8 +45,8 @@ def format_alert(alert: BaseAlert) -> str:
             Original alert is - %s
             Target template is - %s"""
             ),
-            alert, ALERT_TEMPLATE)
-        raise AlertHasNotFieldsForTemplate(alert, ALERT_TEMPLATE) from err
+            alert, conf.ALERT_TEMPLATE)
+        raise AlertHasNotFieldsForTemplate(alert, conf.ALERT_TEMPLATE) from err
 
 
 def format_alert_allow_undefined(alert: BaseAlert) -> str:
@@ -55,7 +55,7 @@ def format_alert_allow_undefined(alert: BaseAlert) -> str:
     args
         alert: original alert
     """
-    template = Template(ALERT_TEMPLATE)
+    template = Template(conf.ALERT_TEMPLATE)
     formated = template.render(**alert.dict())
     return formated
 
@@ -67,7 +67,7 @@ def format_resolve(alert: BaseAlert) -> str:
         alert: original resolve alert
     """
     try:
-        template = Template(RESOLVE_TEMPLATE, undefined=StrictUndefined)
+        template = Template(conf.RESOLVE_TEMPLATE, undefined=StrictUndefined)
         formated = template.render(**alert.dict())
         return formated
 
@@ -77,8 +77,8 @@ def format_resolve(alert: BaseAlert) -> str:
             Original alert is - %s
             Target template is - %s"""
             ),
-            alert, RESOLVE_TEMPLATE)
-        raise AlertHasNotFieldsForTemplate(alert, RESOLVE_TEMPLATE) from err
+            alert, conf.RESOLVE_TEMPLATE)
+        raise AlertHasNotFieldsForTemplate(alert, conf.RESOLVE_TEMPLATE) from err
 
 
 def format_resolve_allow_undefined(alert: BaseAlert) -> str:
@@ -87,7 +87,7 @@ def format_resolve_allow_undefined(alert: BaseAlert) -> str:
     args
         alert: original resolve alert
     """
-    template = Template(RESOLVE_TEMPLATE)
+    template = Template(conf.RESOLVE_TEMPLATE)
     formated = template.render(**alert.dict())
     return formated
 

@@ -1,4 +1,5 @@
 .vscode*
 .env
 conf/*
+images/*
 *__pycache__*

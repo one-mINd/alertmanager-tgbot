@@ -4,7 +4,7 @@ from textwrap import dedent
 from telethon.sync import TelegramClient
 
 from conf import conf
-from data_models import BaseAlert, BaseAlerts, ActiveAlerts, EnrichedActiveAlerts
+from data_models import BaseAlert, BaseAlerts, ActiveAlerts, EnrichedActiveAlert, EnrichedActiveAlerts
 from chanel_workers.logger import tgbot_logger
 from chanel_workers.interfaces import ChanelWorkerInterface
 from cache import Cache
@@ -90,7 +90,7 @@ class ChanelWorker(ChanelWorkerInterface):
 
         except KeyError as err:
             tgbot_logger.error(dedent("""\
-                failed sending alerts messages to provided chat%s"""),
+                failed sending alerts messages to provided chat %s"""),
                 chat)
             raise ChatHasNotID(chat) from err
 
@@ -100,7 +100,7 @@ class ChanelWorker(ChanelWorkerInterface):
             raise WrongChatID() from err
 
 
-    async def send_alert_to_chat(self, entity: str, alert: BaseAlert) -> None:
+    async def send_alert_to_chat(self, entity: str, alert: EnrichedActiveAlert) -> None:
         """
         Send single alert to specific telegram chat
         args:
@@ -108,11 +108,21 @@ class ChanelWorker(ChanelWorkerInterface):
             alert: Alert that will be sent to the entity
         """
         try:
-            message = await self.client.send_message(
-                entity=entity,
-                message=format_alert_allow_undefined(alert)
-            )
-            self.cache.cache_alert(alert=alert, entity=entity, message_id=message.id)
+            if len(alert.panes) == 0:
+                message = await self.client.send_message(
+                    entity=entity,
+                    message=format_alert_allow_undefined(alert)
+                )
+                self.cache.cache_alert(alert=alert, entity=entity, messages_ids=[message.id])
+
+            else:
+                messages = await self.client.send_file(
+                    entity=entity,
+                    caption=format_alert_allow_undefined(alert),
+                    file=alert.panes
+                )
+                messages_ids = [m.id for m in messages]
+                self.cache.cache_alert(alert=alert, entity=entity, messages_ids=messages_ids)
 
             tgbot_logger.debug(dedent("""\
                 Alert was sent to chat 
@@ -200,7 +210,7 @@ class ChanelWorker(ChanelWorkerInterface):
                 cache = self.cache.get_cache_by_key(key)
                 await self.client.delete_messages(
                     entity=cache.get("entity"),
-                    message_ids=[cache.get("message_id")]
+                    message_ids=cache.get("messages_ids")
                 )
                 self.cache.delete_alert_by_key(key)
 
@@ -213,7 +223,7 @@ class ChanelWorker(ChanelWorkerInterface):
                 continue
 
 
-    async def update_alert(self, entity: str, alert: BaseAlert) -> None:
+    async def update_alert(self, entity: str, alert: EnrichedActiveAlert) -> None:
         """
         Update text message for alert in chat
         args:
@@ -223,35 +233,32 @@ class ChanelWorker(ChanelWorkerInterface):
         try:
             alert_cache_key = self.cache.generate_key(alert, entity)
             alert_cache = self.cache.get_cache_by_key(alert_cache_key)
-            message_id = alert_cache.get("message_id")
+            messages_ids = alert_cache.get("messages_ids")
 
-            original_message = await self.client.get_messages(
+            original_messages = await self.client.get_messages(
                 entity=entity,
-                ids=message_id
+                ids=messages_ids
             )
             updated_message = format_alert_allow_undefined(alert)
 
-            if original_message.text != updated_message:
-                message = await self.client.edit_message(
-                    entity=entity,
-                    message=message_id,
-                    text=updated_message
-                )
-                self.cache.delete_alert(alert, entity)
-                self.cache.cache_alert(alert, entity, message.id)
-
-                tgbot_logger.debug(dedent("""\
-                    Alert was updated in chat 
-                    Alert labels is - %s
-                    chat id is - %s
-                    """),
-                    alert.labels, entity)
-            else:
-                tgbot_logger.debug(dedent("""\
-                    Trying to update alert, but nothing to update
-                    """
+            for message in original_messages:
+                if message.text != updated_message and message.text != '':
+                    message = await self.client.edit_message(
+                        entity=entity,
+                        message=message.id,
+                        text=updated_message,
+                        file=alert.panes
                     )
-                )
+                    self.cache.delete_alert(alert, entity)
+                    self.cache.cache_alert(alert, entity, messages_ids)
+
+                    tgbot_logger.debug(dedent("""\
+                        Alert was updated in chat 
+                        Alert labels is - %s
+                        chat id is - %s
+                        """),
+                        alert.labels, entity)
+                    break
 
         except Exception as err:
             tgbot_logger.exception(dedent("""\
@@ -297,8 +304,11 @@ class ChanelWorker(ChanelWorkerInterface):
             chat_id = int(chat_id)
 
             cached_alerts = self.cache.get_alerts_by_entity(chat_id)
-            cached_ids = [cache.get("message_id") for cache in cached_alerts]
-            cached_ids = set(cached_ids)
+            cached_ids = set([
+                message_id
+                for cache in cached_alerts
+                for message_id in cache.get("messages_ids")
+            ])
 
             messages_ids = await self.get_messages_ids_in_channel(chat_id)
             messages_ids = set(messages_ids)
@@ -345,6 +355,7 @@ class ChanelWorker(ChanelWorkerInterface):
 
         # Defining alerts to delete
         alerts_to_delete = cached_keys - cache_keys
+        alerts_to_delete = set(alerts_to_delete)
         await self.delete_alerts_by_cache_keys(alerts_to_delete)
         tgbot_logger.info(dedent(f"""\
                             Alerts to delete - {len(alerts_to_delete)}

@@ -10,6 +10,7 @@ from conf import (
 from api.api import get_server, set_bot
 from tgbot import TGBot
 from alertmanager_workers import AlertmanagerWorker
+from grafana_workers import GrafanaWorker
 from project_logging import root_logger
 
 
@@ -19,7 +20,14 @@ async def run(loop):
     while True:
         try:
             init_conf()
+
+            grafna_worker = GrafanaWorker(
+                grafana_url=conf.GRAFANA_ADDRESS,
+                grafana_auth_token=conf.GRAFANA_AUTH_TOKEN
+            )
+
             alertmanager_worker = AlertmanagerWorker(
+                grafana_worker=grafna_worker,
                 alertmanager_address=conf.ALERTMANAGER_ADDRESS
             )
 

@@ -87,6 +87,8 @@ class Conf(ConfFile):
     DEFAULT_CHATS: List[int] = []
     CHATS_IDS: List[int] = []
     ALERTMANAGER_ADDRESS: AnyUrl = None
+    GRAFANA_ADDRESS: AnyUrl = None
+    GRAFANA_AUTH_TOKEN: str = None
 
     class Config:
         """Model configuration"""
@@ -130,7 +132,7 @@ class Conf(ConfFile):
             return cls.model_fields[info.field_name].default
         return v
 
-    @field_validator('ALERTMANAGER_ADDRESS')
+    @field_validator('ALERTMANAGER_ADDRESS', 'GRAFANA_ADDRESS')
     def tostr(cls, v: str) -> str:
         """Convert pydantic url type to str"""
         return str(v)
@@ -227,6 +229,7 @@ class Silence(BaseModel):
 class EnrichedActiveAlert(ActiveAlert):
     """Active alert enriched with information by alertmanager workers"""
     silences: Optional[List[Silence]] = []
+    panes: Optional[List[str]] = []
 
 
 class EnrichedActiveAlerts(BaseModel):

@@ -7,6 +7,7 @@ from chanel_workers import ChanelWorkerInterface
 from data_models import ActiveAlerts, EnrichedActiveAlerts, EnrichedActiveAlert, Silence, Mute
 from request_senders import send_get_request, send_post_request, send_delete_request
 from alertmanager_workers.logger import alertmanager_workers_logger
+from grafana_workers import GrafanaWorker
 
 
 class AlertmanagerWorker():
@@ -19,11 +20,13 @@ class AlertmanagerWorker():
     """
     def __init__(
             self,
+            grafana_worker: GrafanaWorker,
             alertmanager_address: str,
             chanel_worker: ChanelWorkerInterface = None,
             delay: int = 10
         ) -> None:
 
+        self.grafana_worker = grafana_worker
         self.chanel_worker = chanel_worker
         self.alertmanager_address = alertmanager_address
         self.alertmanager_alerts_address = self.alertmanager_address + "api/v2/alerts"
@@ -102,7 +105,7 @@ class AlertmanagerWorker():
         return ActiveAlerts(**result)
 
 
-    async def enrich_alerts_silences(self, alerts: ActiveAlerts) -> EnrichedActiveAlerts:
+    async def enrich_alerts(self, alerts: ActiveAlerts) -> EnrichedActiveAlerts:
         """
         Add silences information to existed active alerts
         args:
@@ -123,6 +126,13 @@ class AlertmanagerWorker():
                     silence = Silence(**silence)
                     alert.silences.append(silence)
 
+            alert_labels_panes = [l for l in alert.labels if "pane-" in l]
+            if len(alert_labels_panes) > 0:
+                for pane in alert_labels_panes:
+                    pane = alert.labels.get(pane)
+                    pane_image_path = await self.grafana_worker.get_rendered_pane(pane)
+                    alert.panes.append(pane_image_path)
+
             result.append(alert)
 
         result = {"alerts": result}
@@ -136,16 +146,24 @@ class AlertmanagerWorker():
         for a curent moment and send that to specified chanel worker. 
         """
         while True:
-            alertmanager_workers_logger.debug(dedent("""\
-                                Request active alerts from alertmanager and sync them in chats
-                                """))
-            alerts = await send_get_request(self.alertmanager_alerts_address)
-            alerts = {"alerts": alerts}
-            alerts = ActiveAlerts(**alerts)
-            alerts = self.alerts_filter(alerts)
-            alerts = await self.enrich_alerts_silences(alerts)
-            await self.chanel_worker.sync_alerts(alerts)
-            await asyncio.sleep(self.delay)
+            try:
+                alertmanager_workers_logger.debug(dedent("""\
+                                    Request active alerts from alertmanager and sync them in chats
+                                    """))
+                alerts = await send_get_request(self.alertmanager_alerts_address)
+                alerts = {"alerts": alerts}
+                alerts = ActiveAlerts(**alerts)
+                alerts = self.alerts_filter(alerts)
+                alerts = await self.enrich_alerts(alerts)
+                await self.chanel_worker.sync_alerts(alerts)
+                await self.grafana_worker.delete_all_panes()
+                await asyncio.sleep(self.delay)
+
+            except Exception as err:
+                alertmanager_workers_logger.error(dedent("""\
+                                    Sync alerts failed. Reason is - %s
+                                    """), str(err))
+                continue
 
 
 # Module Exceptions
@@ -154,8 +172,6 @@ class AlertmanagerWorker():
 class AlertHasntSilence(Exception):
     """
     Exception for cases when alert has not any related silence
-    args:
-        alert: Alert without any mutes
     """
     def __init__(self):
         super().__init__(

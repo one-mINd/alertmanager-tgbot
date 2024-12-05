@@ -22,6 +22,7 @@ LOGGING = {
         "api": {"handlers": ["stdout"], "level": "INFO"},
         "tgbot": {"handlers": ["stdout"], "level": "INFO"},
         "alertmanager_workers": {"handlers": ["stdout"], "level": "INFO"},
+        "grafana_workers": {"handlers": ["stdout"], "level": "INFO"},
         "chatbot": {"handlers": ["stdout"], "level": "INFO"}
     },
 }

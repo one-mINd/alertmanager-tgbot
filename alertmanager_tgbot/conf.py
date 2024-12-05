@@ -49,6 +49,8 @@ def init_conf():
 
     # Services communication
     alertmanager_address = getenv("ALERTMANAGER_ADDRESS")
+    grafana_address = getenv("GRAFANA_ADDRESS")
+    grafana_auth_token = getenv("GRAFANA_AUTH_TOKEN")
 
     # Permissions
     acl = confs.get("ACL")
@@ -69,6 +71,8 @@ def init_conf():
         conf.DEFAULT_CHATS=default_chats
         conf.CHATS_IDS=chats_ids
         conf.ALERTMANAGER_ADDRESS=alertmanager_address
+        conf.GRAFANA_ADDRESS=grafana_address
+        conf.GRAFANA_AUTH_TOKEN=grafana_auth_token
         conf.ACL=acl
         conf.ALERT_TEMPLATE=alert_template
         conf.RESOLVE_TEMPLATE=resolve_template

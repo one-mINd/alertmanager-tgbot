@@ -14,6 +14,7 @@ The project requires the following environment variables:
  - USER_PASSWORD (Optional) - Account password
  - CLIENT_NAME - The name of the client that will be used to create session file names.
  - ALERTMANAGER_ADDRESS - Alertmanager URL
+ - GRAFANA_AUTH_TOKEN - Token for authorization in grafana for rendering panels
  #### The following variables are required if you want to run the project in a docker container
  - IMAGE_TAG - Project image tag. You can find all possible tags here - https://github.com/one-mINd/alertmanager-tgbot/tags 
  - CONF_DIR - The directory on host where the configuration file is located and session files will be stored
@@ -82,6 +83,21 @@ alert_template: |
         comment: str
         createdBy: str
         matchers: List[MuteMatcher]
+```
+
+## Rendering grafana panes
+The bot is able to attach panels from Grafana dashboards to alerts. To do this, the bot only needs to specify the GRAFANA_AUTH_TOKEN variable. This is a token with which the bot will log in to Grafana and work with it using the API.
+Panels in Grafana are rendered using the configured grafana-image-renderer service. Therefore, make sure that the service is working correctly and Grafana is able to render panels with its help.
+In order for the bot to attach panels to alerts, they must have labels whose name matches the `pane-*` mask, and the content must contain a valid URL with a request to Grafana.
+You can use the form below to generate a URL:
+```
+http://<grafana_host>/render/d-solo/<dashboard_id>?orgId=<orgId>&from=<from_timestamp_millis>&to=<to_timestamp_millis>&panelId=<panelId>&width=600&height=448&tz=Europe%2FZurich&theme=light
+```
+
+Example of labels with panels in alerts
+```
+pane-cpu: "http://grafana/render/d-solo/aaaaaaaaaaaaaa?orgId=1&panelId=83&width=1366&height=768&tz=Europe%2FMoscow&theme=light&var-dns_hostname=somehost&var-domainname=somedomain"
+pane-memory: "http://grafana/render/d-solo/aaaaaaaaaaaaaa?orgId=2&panelId=2&width=1366&height=768&tz=Europe%2FMoscow&theme=light&var-dns_hostname=somehost&var-domainname=somedomain"
 ```
 
 ## Startup

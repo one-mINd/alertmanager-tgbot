@@ -28,7 +28,8 @@ async def run(loop):
 
             alertmanager_worker = AlertmanagerWorker(
                 grafana_worker=grafna_worker,
-                alertmanager_address=conf.ALERTMANAGER_ADDRESS
+                alertmanager_address=conf.ALERTMANAGER_ADDRESS,
+                loop=loop
             )
 
             bot = TGBot(
@@ -38,6 +39,7 @@ async def run(loop):
                 user_password=conf.USER_PASSWORD,
                 client_name=conf.CLIENT_NAME,
                 alertmanager_worker=alertmanager_worker,
+                grafana_worker=grafna_worker,
                 loop=loop
             )
 

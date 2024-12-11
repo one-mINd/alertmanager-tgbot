@@ -146,12 +146,13 @@ def parse_mute_command(command: str, alert: BaseAlert) -> Mute:
 
     mute_matchers = []
     for label in alert.labels:
-        mute_matchers.append(
-            MuteMatcher(
-                name=label,
-                value=alert.labels[label]
+        if "pane-" not in label:
+            mute_matchers.append(
+                MuteMatcher(
+                    name=label,
+                    value=alert.labels[label]
+                )
             )
-        )
 
     if args["ends_at"] != "":
         result = Mute(

@@ -2,6 +2,7 @@
 
 from asyncio import sleep
 from textwrap import dedent
+from yaml import safe_dump
 from telethon.sync import TelegramClient, events
 
 from .logger import chatbot_logger
@@ -10,6 +11,7 @@ from conf import conf
 from cache import Cache
 from chat_bot.parsers import parse_silence_command, parse_mute_command, get_help
 from alertmanager_workers import AlertmanagerWorker, AlertHasntSilence
+from grafana_workers import GrafanaWorker
 
 
 class ChatBot():
@@ -23,12 +25,14 @@ class ChatBot():
             self,
             client: TelegramClient,
             cache: Cache,
-            alertmanager_worker: AlertmanagerWorker
+            alertmanager_worker: AlertmanagerWorker,
+            grafana_worker: GrafanaWorker
         ) -> None:
 
         self.client = client
         self.cache = cache
         self.alertmanager_worker = alertmanager_worker
+        self.grafana_worker = grafana_worker
         self.forwards_stack = {}
 
         self.client.add_event_handler(
@@ -63,6 +67,13 @@ class ChatBot():
             self.unmute,
             event=events.NewMessage(
                 pattern='/unmute'
+            )
+        )
+
+        self.client.add_event_handler(
+            self.info,
+            event=events.NewMessage(
+                pattern='/info'
             )
         )
 
@@ -164,25 +175,26 @@ class ChatBot():
             silences_ids = []
             alerts = self.forwards_stack.pop(event.chat_id)
             for alert in alerts:
-                if not alert.message.forward.chat_id in conf.CHATS_IDS:
-                    raise ForwardFromUnknownChat(alert.message.forward.chat_id)
+                if alert.message.text != '':
+                    if not alert.message.forward.chat_id in conf.CHATS_IDS:
+                        raise ForwardFromUnknownChat(alert.message.forward.chat_id)
 
-                alert_cache_keys = self.cache.get_keys_by_entity_messageids(
-                    entity=alert.message.forward.chat_id,
-                    messsages_ids=[alert.message.forward.channel_post]
-                )
-                alert_cache_key = alert_cache_keys[0]
-                alert = self.cache.get_cache_by_key(alert_cache_key)
-                alert = alert.get('alert')
-                mute = parse_mute_command(command, alert)
-                mute.createdBy = sender.username
-                silence_id = await self.alertmanager_worker.create_silence(mute)
-                silences_ids.append(silence_id)
+                    alert_cache_keys = self.cache.get_keys_by_entity_messageids(
+                        entity=alert.message.forward.chat_id,
+                        messsages_ids=[alert.message.forward.channel_post]
+                    )
+                    alert_cache_key = alert_cache_keys[0]
+                    alert = self.cache.get_cache_by_key(alert_cache_key)
+                    alert = alert.get('alert')
+                    mute = parse_mute_command(command, alert)
+                    mute.createdBy = sender.username
+                    silence_id = await self.alertmanager_worker.create_silence(mute)
+                    silences_ids.append(silence_id)
 
-                chatbot_logger.info(
-                    "Alert muted with silence id - %s",
-                    silence_id
-                )
+                    chatbot_logger.info(
+                        "Alert muted with silence id - %s",
+                        silence_id
+                    )
 
             await self.client.send_message(
                 entity=event.message.chat_id,
@@ -236,23 +248,25 @@ class ChatBot():
 
             silences_ids = []
             alerts = self.forwards_stack.pop(event.chat_id)
-            for alert_forward in alerts:
-                alert_cache_keys = self.cache.get_keys_by_entity_messageids(
-                    entity=alert_forward.message.forward.chat_id,
-                    messsages_ids=[alert_forward.message.forward.channel_post]
-                )
-                alert_cache_key = alert_cache_keys[0]
-                alert = self.cache.get_cache_by_key(alert_cache_key)
-                alert = alert.get('alert')
-                silences_id = await self.alertmanager_worker.unmute_alert(
-                    alert
-                )
-                silences_ids.append(silences_id)
+            for alert in alerts:
+                if alert.message.text != '':
+                    if not alert.message.forward.chat_id in conf.CHATS_IDS:
+                        raise ForwardFromUnknownChat(alert.message.forward.chat_id)
 
-                chatbot_logger.info(
-                    "Alert unmuted with silence id - %s",
-                    silences_id
-                )
+                    alert_cache_keys = self.cache.get_keys_by_entity_messageids(
+                        entity=alert.message.forward.chat_id,
+                        messsages_ids=[alert.message.forward.channel_post]
+                    )
+                    alert_cache_key = alert_cache_keys[0]
+                    alert = self.cache.get_cache_by_key(alert_cache_key)
+                    alert = alert.get('alert')
+                    silences_id = await self.alertmanager_worker.unmute_alert(alert)
+                    silences_ids.append(silences_id)
+
+                    chatbot_logger.info(
+                        "Alert unmuted with silence id - %s",
+                        silences_id
+                    )
 
             await self.client.send_message(
                 entity=event.message.chat_id,
@@ -264,7 +278,7 @@ class ChatBot():
             chatbot_logger.error("Alert not muted")
             await self.client.send_message(
                 entity=event.message.chat_id,
-                reply_to=alert_forward.message.id,
+                reply_to=alert.message.id,
                 message="The alert silence is not removed because the alert is not muted yet."
             )
 
@@ -274,6 +288,75 @@ class ChatBot():
                 entity=event.message.chat_id,
                 reply_to=event.message.id,
                 message=f"Silence delete failed with error:\n{err}"
+            )
+
+
+    async def info(self, event: events.NewMessage):
+        """
+        Handle alert info command
+        """
+        try:
+            await sleep(2)
+
+            command = event.message.message
+            sender = await event.get_sender()
+            chatbot_logger.info(
+                "Handle info command from user %s command is - %s",
+                sender.username, command
+            )
+
+            if not is_operation_permitted(sender.username, "info"):
+                raise PermissionDenied(sender.username)
+
+            alerts = self.forwards_stack.pop(event.chat_id)
+            for alert in alerts:
+                if alert.message.text != '':
+                    if not alert.message.forward.chat_id in conf.CHATS_IDS:
+                        raise ForwardFromUnknownChat(alert.message.forward.chat_id)
+
+                    alert_cache_keys = self.cache.get_keys_by_entity_messageids(
+                        entity=alert.message.forward.chat_id,
+                        messsages_ids=[alert.message.forward.channel_post]
+                    )
+                    alert_cache_key = alert_cache_keys[0]
+                    alert = self.cache.get_cache_by_key(alert_cache_key)
+                    alert = alert.get('alert')
+
+                    alert_info = safe_dump(alert.dict())
+                    alert_info = "```\n" + alert_info + "\n```"
+
+                    message = await self.client.send_message(
+                        entity=event.message.chat_id,
+                        reply_to=event.message.id,
+                        message=alert_info,
+                        parse_mode='md'
+                    )
+
+                    alert_panes_urls = [
+                        alert.labels[l]
+                        for l in alert.labels if "pane-" in l
+                    ]
+
+                    alert_panes = [
+                        await self.grafana_worker.get_rendered_pane(pane)
+                        for pane in alert_panes_urls
+                    ]
+
+                    if len(alert_panes) > 0:
+                        await self.client.send_file(
+                            entity=message.chat_id,
+                            reply_to=message.id,
+                            file=alert_panes
+                        )
+                        for pane in alert_panes:
+                            await self.grafana_worker.delete_pane(pane)
+
+        except Exception as err:
+            chatbot_logger.error("Alert info generation failed with error: \n%s", err)
+            await self.client.send_message(
+                entity=event.message.chat_id,
+                reply_to=event.message.id,
+                message=f"Alert info generation failed with error:\n{err}"
             )
 
 

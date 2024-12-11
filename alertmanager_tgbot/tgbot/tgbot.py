@@ -4,6 +4,7 @@ from asyncio import new_event_loop
 from telethon.sync import TelegramClient
 
 from alertmanager_workers import AlertmanagerWorker
+from grafana_workers import GrafanaWorker
 from chanel_workers import ChanelWorker
 from chat_bot import ChatBot
 from cache import Cache
@@ -26,6 +27,7 @@ class TGBot(ChanelWorker, ChatBot):
             phone_number: str,
             user_password: str,
             alertmanager_worker: AlertmanagerWorker,
+            grafana_worker: GrafanaWorker,
             client_name="tgbot",
             loop=new_event_loop()
         ) -> None:
@@ -52,6 +54,7 @@ class TGBot(ChanelWorker, ChatBot):
             self,
             client=self.client,
             cache=self.cache,
+            grafana_worker=grafana_worker,
             alertmanager_worker=alertmanager_worker
         )
 

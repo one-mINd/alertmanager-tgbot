@@ -95,14 +95,19 @@ async def send_get_image_request(
     """
     async with aiohttp.ClientSession() as session:
         try:
-            async with await session.get(url=url, timeout=600000, headers=authorization_header) as response:
+            session_timeout = aiohttp.ClientTimeout(total=None,sock_connect=600000,sock_read=600000)
+            async with await session.get(url=url, timeout=session_timeout, headers=authorization_header) as response:
                 response_status = response.status
                 if response_status != 200 and response_status not in ignored_statuses:
                     root_logger.error(f"""
                                         failed send get request to - {url};
                                         status - {response_status};
                                         """)
-                    raise WrongResponseCode(url, response_status, "Image has not details text")
+                    raise WrongResponseCode(
+                        url=url,
+                        status=response_status,
+                        details="Image has not details text"
+                    )
 
                 image_file = await aiofiles.open(output_file_name, mode='wb')
                 await image_file.write(await response.read())

@@ -108,7 +108,8 @@ class ChanelWorker(ChanelWorkerInterface):
             alert: Alert that will be sent to the entity
         """
         try:
-            if len(alert.panes) == 0:
+            panes = [i for i in alert.panes if i is not None]
+            if len(panes) == 0:
                 message = await self.client.send_message(
                     entity=entity,
                     message=format_alert_allow_undefined(alert)
@@ -119,7 +120,7 @@ class ChanelWorker(ChanelWorkerInterface):
                 messages = await self.client.send_file(
                     entity=entity,
                     caption=format_alert_allow_undefined(alert),
-                    file=alert.panes
+                    file=panes
                 )
                 messages_ids = [m.id for m in messages]
                 self.cache.cache_alert(alert=alert, entity=entity, messages_ids=messages_ids)
@@ -223,7 +224,28 @@ class ChanelWorker(ChanelWorkerInterface):
                 continue
 
 
-    async def update_alert(self, entity: str, alert: EnrichedActiveAlert) -> None:
+    async def resend_alert(self,
+            entity: str,
+            alert: EnrichedActiveAlert,
+            message_ids: list
+        ) -> None:
+        """
+        Resend alert in chat
+        args:
+            entity: ID of target chat or group
+            alerts: alert that will updated in entity
+        """
+        self.cache.delete_alert(alert, entity)
+        await self.delete_alerts_by_message_ids(entity, message_ids)
+        await self.send_alert_to_chat(entity, alert)
+
+
+    async def update_alert(self,
+            entity: str,
+            alert: EnrichedActiveAlert,
+            original_messages: list,
+            messages_ids: list
+        ) -> None:
         """
         Update text message for alert in chat
         args:
@@ -231,16 +253,7 @@ class ChanelWorker(ChanelWorkerInterface):
             alerts: alert that will updated in entity
         """
         try:
-            alert_cache_key = self.cache.generate_key(alert, entity)
-            alert_cache = self.cache.get_cache_by_key(alert_cache_key)
-            messages_ids = alert_cache.get("messages_ids")
-
-            original_messages = await self.client.get_messages(
-                entity=entity,
-                ids=messages_ids
-            )
             updated_message = format_alert_allow_undefined(alert)
-
             for message in original_messages:
                 if message.text != updated_message and message.text != '':
                     message = await self.client.edit_message(
@@ -249,6 +262,7 @@ class ChanelWorker(ChanelWorkerInterface):
                         text=updated_message,
                         file=alert.panes
                     )
+
                     self.cache.delete_alert(alert, entity)
                     self.cache.cache_alert(alert, entity, messages_ids)
 
@@ -278,7 +292,26 @@ class ChanelWorker(ChanelWorkerInterface):
         chat_id_alerts = self._split_alerts_by_chats(income_alerts)
         for chat_id, alerts in chat_id_alerts.items():
             for alert in alerts:
-                await self.update_alert(chat_id, alert)
+                alert_cache_key = self.cache.generate_key(alert, chat_id)
+                alert_cache = self.cache.get_cache_by_key(alert_cache_key)
+                messages_ids = alert_cache.get("messages_ids")
+
+                original_messages = await self.client.get_messages(
+                    entity=chat_id,
+                    ids=messages_ids
+                )
+
+                original_messages_media = [i.photo
+                    for i in original_messages if i.photo is not None
+                ]
+                alert_panes = [i
+                    for i in alert.panes if i is not None
+                ]
+
+                if len(original_messages_media) != len(alert_panes):
+                    await self.resend_alert(chat_id, alert, messages_ids)
+                else:
+                    await self.update_alert(chat_id, alert, original_messages, messages_ids)
 
 
     async def get_messages_ids_in_channel(self, entity: int) -> list:

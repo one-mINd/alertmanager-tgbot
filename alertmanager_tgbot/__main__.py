@@ -17,7 +17,8 @@ from project_logging import root_logger
 async def run(loop):
     """Run"""
     root_logger.info("Starting alertmanager-tgbot")
-    while True:
+    running = True
+    while running:
         try:
             init_conf()
 
@@ -57,6 +58,10 @@ async def run(loop):
             root_logger.error(err)
             await sleep(5)
             continue
+
+        except Exception as err:
+            running = False
+            raise err
 
 
 if __name__ == "__main__":

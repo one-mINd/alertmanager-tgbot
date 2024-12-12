@@ -2,6 +2,7 @@
 
 from textwrap import dedent
 from telethon.sync import TelegramClient
+from asyncio import sleep
 
 from conf import conf
 from data_models import BaseAlert, BaseAlerts, ActiveAlerts, EnrichedActiveAlert, EnrichedActiveAlerts
@@ -109,6 +110,7 @@ class ChanelWorker(ChanelWorkerInterface):
         """
         try:
             panes = [i for i in alert.panes if i is not None]
+            await sleep(2)
             if len(panes) == 0:
                 message = await self.client.send_message(
                     entity=entity,

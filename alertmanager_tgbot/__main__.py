@@ -1,5 +1,6 @@
 """Project entrypoint"""
 
+from sys import argv
 from asyncio import new_event_loop, sleep
 from conf import (
     conf,
@@ -12,6 +13,22 @@ from tgbot import TGBot
 from alertmanager_workers import AlertmanagerWorker
 from grafana_workers import GrafanaWorker
 from project_logging import root_logger
+
+
+async def login(loop):
+    """Login in telegram"""
+    init_conf()
+    bot = TGBot(
+        api_id=conf.API_ID,
+        api_hash=conf.API_HASH,
+        phone_number=conf.PHONE_NUMBER,
+        user_password=conf.USER_PASSWORD,
+        client_name=conf.CLIENT_NAME,
+        alertmanager_worker=None,
+        grafana_worker=None,
+        loop=loop
+    )
+    await bot.start()
 
 
 async def run(loop):
@@ -66,4 +83,7 @@ async def run(loop):
 
 if __name__ == "__main__":
     loop = new_event_loop()
-    loop.run_until_complete(run(loop))
+    if "login" in argv:
+        loop.run_until_complete(login(loop))
+    else:
+        loop.run_until_complete(run(loop))

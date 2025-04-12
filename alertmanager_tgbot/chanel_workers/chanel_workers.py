@@ -303,17 +303,7 @@ class ChanelWorker(ChanelWorkerInterface):
                     ids=messages_ids
                 )
 
-                original_messages_media = [i.photo
-                    for i in original_messages if i.photo is not None
-                ]
-                alert_panes = [i
-                    for i in alert.panes if i is not None
-                ]
-
-                if len(original_messages_media) != len(alert_panes):
-                    await self.resend_alert(chat_id, alert, messages_ids)
-                else:
-                    await self.update_alert(chat_id, alert, original_messages, messages_ids)
+                await self.update_alert(chat_id, alert, original_messages, messages_ids)
 
 
     async def get_messages_ids_in_channel(self, entity: int) -> list:
